@@ -2,7 +2,9 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-const supabase = createClient(supabaseUrl, supabaseKey)
+
+// Only create Supabase client if env vars are provided
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null
 
 export interface UserLimitCheck {
   canAnalyze: boolean
@@ -14,6 +16,16 @@ export interface UserLimitCheck {
 export async function checkUserLimits(email: string): Promise<UserLimitCheck> {
   try {
     console.log('🔍 Checking limits for:', email)
+    
+    // If Supabase is not configured, return default values
+    if (!supabase) {
+      console.warn('Supabase not configured - using default limits')
+      return {
+        canAnalyze: true,
+        totalAnalyses: 0,
+        remainingFreeAnalyses: 100
+      }
+    }
     
     // Obtener el análisis más reciente del usuario
     const { data: recentAnalysis, error: recentError } = await supabase

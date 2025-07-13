@@ -73,8 +73,9 @@ const VideoUpload = ({ onVideoUpload, userEmail, strokeType, handedness }: Video
       formData.append('stroke_type', strokeType);
       formData.append('handedness', handedness);
 
-      // Llamar al backend (usa proxy en desarrollo)
-      const response = await fetch('/upload', {
+      // Llamar al backend
+      const baseUrl = import.meta.env.VITE_BACKEND_URL || '';
+      const response = await fetch(`${baseUrl}/upload`, {
         method: 'POST',
         body: formData,
       });
