@@ -128,7 +128,7 @@ const EmailCapture = ({ onEmailSubmit, onLimitReached, isLoading = false }: Emai
           <CardContent className="p-4">
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <Label className="text-sm font-semibold text-gray-700 mb-2 block">
+                <Label className="text-base font-semibold text-gray-700 mb-2 block">
                   Which stroke do you want to improve? *
                 </Label>
                 <RadioGroup value={strokeType} onValueChange={setStrokeType}>
@@ -162,7 +162,7 @@ const EmailCapture = ({ onEmailSubmit, onLimitReached, isLoading = false }: Emai
               </div>
 
               <div>
-                <Label className="text-sm font-semibold text-gray-700 mb-2 block">
+                <Label className="text-base font-semibold text-gray-700 mb-2 block">
                   Which is your dominant hand? *
                 </Label>
                 <RadioGroup value={handedness} onValueChange={setHandedness}>
