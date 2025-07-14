@@ -73,12 +73,19 @@ const VideoUpload = ({ onVideoUpload, userEmail, strokeType, handedness }: Video
       formData.append('stroke_type', strokeType);
       formData.append('handedness', handedness);
 
-      // Llamar al backend
+      // Llamar al backend con timeout extendido
       const baseUrl = import.meta.env.VITE_BACKEND_URL || '';
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutos
+      
       const response = await fetch(`${baseUrl}/upload`, {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`Error del servidor: ${response.status}`);
@@ -201,6 +208,11 @@ const VideoUpload = ({ onVideoUpload, userEmail, strokeType, handedness }: Video
                     <p className="text-sm text-gray-600">
                       {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB
                     </p>
+                    {isUploading && (
+                      <p className="text-xs text-tennis-green mt-1 font-medium">
+                        🎾 Our AI is analyzing your technique... This can take up to 5 minutes, so feel free to grab a coffee or check out another tab! ☕
+                      </p>
+                    )}
                   </div>
                 </div>
                 {!isUploading && (
