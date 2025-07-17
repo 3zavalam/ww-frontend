@@ -124,7 +124,7 @@ const VideoUpload = ({ onVideoUpload, userEmail, strokeType, handedness }: Video
     setCurrentStep('🚀 Preparing upload...');
 
     try {
-      const baseUrl = import.meta.env.VITE_BACKEND_URL || '';
+      const baseUrl = import.meta.env.VITE_BACKEND_URL || 'https://api.winnerway.pro';
 
       // 1. Obtener presigned URL
       setCurrentStep('📝 Getting upload authorization...');
