@@ -15,6 +15,8 @@ const VideoUpload = ({ onVideoUpload, userEmail, strokeType, handedness }: Video
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState('');
   const { toast } = useToast();
 
   const strokeLabels: { [key: string]: string } = {
@@ -36,7 +38,7 @@ const VideoUpload = ({ onVideoUpload, userEmail, strokeType, handedness }: Video
 
   const validateFile = (file: File) => {
     const validTypes = ['video/mp4', 'video/avi', 'video/mov', 'video/quicktime'];
-    const maxSize = 100 * 1024 * 1024; // 100MB
+    const maxSize = 400 * 1024 * 1024; // 400MB (aumentado para S3)
 
     if (!validTypes.includes(file.type)) {
       toast({
@@ -50,7 +52,7 @@ const VideoUpload = ({ onVideoUpload, userEmail, strokeType, handedness }: Video
     if (file.size > maxSize) {
       toast({
         title: "File too large",
-        description: "Please upload a video smaller than 100MB",
+        description: "Please upload a video smaller than 400MB",
         variant: "destructive",
       });
       return false;
@@ -59,40 +61,138 @@ const VideoUpload = ({ onVideoUpload, userEmail, strokeType, handedness }: Video
     return true;
   };
 
+  const pollJobStatus = async (jobId: string) => {
+    setCurrentStep('🤖 AI analyzing your technique...');
+    setUploadProgress(40);
+
+    const baseUrl = import.meta.env.VITE_BACKEND_URL || '';
+    const maxAttempts = 60; // 10 minutos máximo
+    let attempts = 0;
+
+    const poll = async (): Promise<any> => {
+      try {
+        const response = await fetch(`${baseUrl}/status/${jobId}`);
+        if (!response.ok) throw new Error('Failed to check status');
+        
+        const result = await response.json();
+        
+        if (result.status === 'done' && result.result) {
+          return result.result;
+        } else if (result.status === 'error') {
+          throw new Error('Analysis failed on server');
+        } else {
+          attempts++;
+          if (attempts >= maxAttempts) {
+            throw new Error('Analysis timeout - please try again');
+          }
+          
+          // Simular progreso durante el análisis
+          const progress = Math.min(90, 40 + (attempts * 2));
+          setUploadProgress(progress);
+          
+          // Actualizar mensaje cada cierto tiempo
+          if (attempts % 10 === 0) {
+            const messages = [
+              '🎾 Extracting pose and keyframes...',
+              '📊 Comparing with professional technique...',
+              '💡 Generating personalized feedback...',
+              '🏆 Almost done, finalizing analysis...'
+            ];
+            const messageIndex = Math.floor(attempts / 10) % messages.length;
+            setCurrentStep(messages[messageIndex]);
+          }
+          
+          // Esperar 10 segundos antes del siguiente poll
+          await new Promise(resolve => setTimeout(resolve, 10000));
+          return poll();
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+        throw error;
+      }
+    };
+
+    return poll();
+  };
+
   const processFile = async (file: File) => {
     if (!validateFile(file)) return;
 
     setIsUploading(true);
     setUploadedFile(file);
+    setUploadProgress(0);
+    setCurrentStep('🚀 Preparing upload...');
 
     try {
-      // Crear FormData para enviar al backend
-      const formData = new FormData();
-      formData.append('video', file);
-      formData.append('email', userEmail);
-      formData.append('stroke_type', strokeType);
-      formData.append('handedness', handedness);
-
-      // Llamar al backend con timeout extendido
       const baseUrl = import.meta.env.VITE_BACKEND_URL || '';
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutos
-      
-      const response = await fetch(`${baseUrl}/upload`, {
-        method: 'POST',
-        body: formData,
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        throw new Error(`Error del servidor: ${response.status}`);
+      // 1. Obtener presigned URL
+      setCurrentStep('📝 Getting upload authorization...');
+      setUploadProgress(5);
+      
+      const uploadUrlResponse = await fetch(`${baseUrl}/upload-url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: userEmail,
+          stroke_type: strokeType,
+          handedness: handedness
+        })
+      });
+
+      if (!uploadUrlResponse.ok) {
+        throw new Error(`Failed to get upload URL: ${uploadUrlResponse.status}`);
       }
 
-      const analysisData = await response.json();
+      const { presigned, s3_key } = await uploadUrlResponse.json();
       
+      // 2. Upload directo a S3
+      setCurrentStep('⬆️ Uploading video to cloud...');
+      setUploadProgress(10);
+      
+      const formData = new FormData();
+      Object.entries(presigned.fields).forEach(([key, value]) => {
+        formData.append(key, value as string);
+      });
+      formData.append('file', file);
+
+      const s3Response = await fetch(presigned.url, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!s3Response.ok) {
+        throw new Error(`Upload failed: ${s3Response.status}`);
+      }
+
+      // 3. Notificar completado
+      setCurrentStep('✅ Upload complete, starting analysis...');
+      setUploadProgress(30);
+      
+      const notifyResponse = await fetch(`${baseUrl}/notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          s3_key,
+          email: userEmail,
+          stroke_type: strokeType,
+          handedness: handedness,
+          original_filename: file.name,
+          file_size: file.size
+        })
+      });
+
+      if (!notifyResponse.ok) {
+        throw new Error(`Failed to start analysis: ${notifyResponse.status}`);
+      }
+
+      const { job_id } = await notifyResponse.json();
+
+      // 4. Polling del resultado
+      const analysisData = await pollJobStatus(job_id);
+      
+      setUploadProgress(100);
+      setCurrentStep('🎉 Analysis complete!');
       setIsUploading(false);
       
       // Pasar el archivo y los datos del análisis al siguiente componente
@@ -102,9 +202,14 @@ const VideoUpload = ({ onVideoUpload, userEmail, strokeType, handedness }: Video
         title: "Analysis completed!",
         description: `Your ${strokeLabels[strokeType]} video has been successfully analyzed`,
       });
+
     } catch (error) {
       setIsUploading(false);
       setUploadedFile(null);
+      setUploadProgress(0);
+      setCurrentStep('');
+      
+      console.error('Upload/Analysis error:', error);
       
       toast({
         title: "Analysis error",
@@ -133,6 +238,8 @@ const VideoUpload = ({ onVideoUpload, userEmail, strokeType, handedness }: Video
 
   const removeFile = () => {
     setUploadedFile(null);
+    setUploadProgress(0);
+    setCurrentStep('');
   };
 
   return (
@@ -191,7 +298,7 @@ const VideoUpload = ({ onVideoUpload, userEmail, strokeType, handedness }: Video
                 </Button>
               </label>
               <p className="text-sm text-gray-500 mt-4">
-                Supports MP4, AVI, MOV • Max 100MB
+                Supports MP4, AVI, MOV • Max 400MB
               </p>
             </div>
           ) : (
@@ -208,9 +315,9 @@ const VideoUpload = ({ onVideoUpload, userEmail, strokeType, handedness }: Video
                     <p className="text-sm text-gray-600">
                       {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB
                     </p>
-                    {isUploading && (
+                    {isUploading && currentStep && (
                       <p className="text-xs text-tennis-green mt-1 font-medium">
-                        🎾 Our AI is analyzing your technique... This can take up to 5 minutes, so feel free to grab a coffee or check out another tab! ☕
+                        {currentStep}
                       </p>
                     )}
                   </div>
@@ -228,14 +335,23 @@ const VideoUpload = ({ onVideoUpload, userEmail, strokeType, handedness }: Video
               </div>
               {isUploading && (
                 <div className="mt-4">
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-tennis-green h-2 rounded-full animate-pulse" style={{ width: '75%' }}></div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                    <div 
+                      className="bg-tennis-green h-2 rounded-full transition-all duration-300" 
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
                   </div>
-                  <div className="mt-3 space-y-1">
-                    <p className="text-sm text-gray-600">🤖 Analyzing video with AI...</p>
-                    <p className="text-xs text-gray-500">• Extracting pose and keyframes</p>
-                    <p className="text-xs text-gray-500">• Comparing with professional technique</p>
-                    <p className="text-xs text-gray-500">• Generating personalized feedback</p>
+                  <div className="flex justify-between text-xs text-gray-500 mb-3">
+                    <span>{uploadProgress}% complete</span>
+                    <span>~{Math.max(1, Math.ceil((100 - uploadProgress) / 10))} min remaining</span>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-600">
+                      {uploadProgress < 30 ? '⬆️ Uploading video...' : '🤖 AI analyzing technique...'}
+                    </p>
+                    <p className="text-xs text-gray-500">• Fast upload to cloud storage</p>
+                    <p className="text-xs text-gray-500">• AI pose extraction and analysis</p>
+                    <p className="text-xs text-gray-500">• Professional technique comparison</p>
                   </div>
                 </div>
               )}
