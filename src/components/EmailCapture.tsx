@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Mail, Target, Clock, Users, CheckCircle, Star, ArrowRight } from 'lucide-react';
-import { checkUserLimits, calculateProgressPercentage, UserLimitCheck } from '@/lib/limits';
+import { checkUserLimits, calculateProgressPercentage, UserLimitCheck, getTotalAnalysesCount } from '@/lib/limits';
 
 interface EmailCaptureProps {
   onEmailSubmit: (email: string, strokeType: string, handedness: string) => void;
@@ -21,6 +21,7 @@ const EmailCapture = ({ onEmailSubmit, onLimitReached, isLoading = false }: Emai
   const [isEmailValid, setIsEmailValid] = useState(false);
   const [limitsData, setLimitsData] = useState<UserLimitCheck | null>(null);
   const [isCheckingLimits, setIsCheckingLimits] = useState(false);
+  const [globalCounts, setGlobalCounts] = useState<{ totalAnalyses: number, remainingFreeAnalyses: number } | null>(null);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -32,6 +33,20 @@ const EmailCapture = ({ onEmailSubmit, onLimitReached, isLoading = false }: Emai
     setEmail(newEmail);
     setIsEmailValid(validateEmail(newEmail));
   };
+
+  // Get global counts on component mount
+  useEffect(() => {
+    const getGlobalCounts = async () => {
+      try {
+        const counts = await getTotalAnalysesCount();
+        setGlobalCounts(counts);
+      } catch (error) {
+        console.error('Error getting global counts:', error);
+      }
+    };
+    
+    getGlobalCounts();
+  }, []);
 
   // Verificar límites cuando el email es válido
   useEffect(() => {
@@ -70,20 +85,20 @@ const EmailCapture = ({ onEmailSubmit, onLimitReached, isLoading = false }: Emai
   return (
     <div className="space-y-3">
       {/* Scarcity Bar - More compact */}
-      <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg p-2 text-center">
-        <div className="text-sm font-bold">🎾 LIMITED FREE ANALYSIS</div>
-        <div className="w-full bg-orange-700 rounded-full h-1.5 my-1">
+      <div className="bg-black text-white rounded-lg p-2 text-center border border-green-500/20">
+        <div className="text-sm font-bold">🎾 COMMUNITY FREE ANALYSES</div>
+        <div className="w-full bg-gray-800 rounded-full h-1.5 my-1">
           <div 
-            className="bg-white h-1.5 rounded-full transition-all duration-300" 
+            className="bg-green-500 h-1.5 rounded-full transition-all duration-300" 
             style={{ 
-              width: `${limitsData ? calculateProgressPercentage(limitsData.totalAnalyses) : 0}%` 
+              width: `${globalCounts ? calculateProgressPercentage(globalCounts.totalAnalyses) : 0}%` 
             }}
           ></div>
         </div>
         <div className="text-xs opacity-90">
-          {limitsData 
-            ? `Only ${limitsData.remainingFreeAnalyses} out of 100 free analyses remaining`
-            : 'Loading availability...'
+          {globalCounts 
+            ? `Only ${globalCounts.remainingFreeAnalyses} out of 100 free analyses left for the community`
+            : 'Loading community availability...'
           }
         </div>
       </div>
@@ -91,32 +106,29 @@ const EmailCapture = ({ onEmailSubmit, onLimitReached, isLoading = false }: Emai
       {/* Hero Section - More compact */}
       <div className="text-center space-y-2">
         <div className="space-y-2">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">
-            Professional feedback in <span className="text-tennis-green">30 seconds</span>
-          </h1>
         </div>
 
-        {/* Process Icons - More compact */}
-        <div className="flex justify-center items-center gap-4 py-2">
-          <div className="flex items-center gap-1">
-            <div className="w-8 h-8 bg-tennis-green rounded-full flex items-center justify-center">
-              <Target className="w-4 h-4 text-white" />
+        {/* Process Icons - Main focus, larger, futuristic */}
+        <div className="flex justify-center items-center gap-8 py-8">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center border-2 border-green-500/30 shadow-lg shadow-green-500/20">
+              <Target className="w-8 h-8 text-green-500" />
             </div>
-            <span className="text-xs font-medium">Upload</span>
+            <span className="text-lg font-semibold text-gray-800">Upload</span>
           </div>
-          <ArrowRight className="w-4 h-4 text-gray-400" />
-          <div className="flex items-center gap-1">
-            <div className="w-8 h-8 bg-tennis-green rounded-full flex items-center justify-center">
-              <Clock className="w-4 h-4 text-white" />
+          <ArrowRight className="w-6 h-6 text-green-500" />
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center border-2 border-green-500/30 shadow-lg shadow-green-500/20">
+              <Clock className="w-8 h-8 text-green-500" />
             </div>
-            <span className="text-xs font-medium">AI analyzes</span>
+            <span className="text-lg font-semibold text-gray-800">AI analyzes</span>
           </div>
-          <ArrowRight className="w-4 h-4 text-gray-400" />
-          <div className="flex items-center gap-1">
-            <div className="w-8 h-8 bg-tennis-green rounded-full flex items-center justify-center">
-              <CheckCircle className="w-4 h-4 text-white" />
+          <ArrowRight className="w-6 h-6 text-green-500" />
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center border-2 border-green-500/30 shadow-lg shadow-green-500/20">
+              <CheckCircle className="w-8 h-8 text-green-500" />
             </div>
-            <span className="text-xs font-medium">Plan</span>
+            <span className="text-lg font-semibold text-gray-800">Plan</span>
           </div>
         </div>
 
@@ -205,71 +217,29 @@ const EmailCapture = ({ onEmailSubmit, onLimitReached, isLoading = false }: Emai
                   <Button
                     type="submit"
                     disabled={!isFormValid || isLoading || isCheckingLimits}
-                    className="w-full h-10 bg-[#2E7D32] hover:bg-[#2E7D32]/90 text-white font-bold text-sm transition-all duration-200 transform hover:scale-105 shadow-lg"
+                    className="w-full h-10 bg-black hover:bg-gray-900 text-white font-bold text-sm transition-all duration-200 transform hover:scale-105 shadow-lg border border-green-500/30 hover:border-green-500/50"
                   >
                     {isLoading ? 'Processing...' : isCheckingLimits ? 'Checking availability...' : 'Start free analysis 🎾'}
                   </Button>
                 )}
 
                 {/* Social Proof - More compact */}
-                <div className="flex items-center justify-center gap-3 text-xs text-green-600 font-medium">
+                <div className="flex items-center justify-center gap-3 text-xs text-gray-600 font-medium">
                   <div className="flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3" />
+                    <CheckCircle className="w-3 h-3 text-green-500" />
                     <span>+100 analyses</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3" />
+                    <CheckCircle className="w-3 h-3 text-green-500" />
                     <span>95% accuracy</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3" />
-                    <span>30 seconds</span>
                   </div>
                 </div>
 
-                {/* Security Copy */}
-                <p className="text-xs text-gray-500 text-center">
-                  No credit card • Cancel anytime • 100% secure
-                </p>
               </div>
             </form>
           </CardContent>
         </Card>
 
-        {/* Testimonials - More compact and horizontal */}
-        <div className="bg-white rounded-lg p-3 shadow-lg max-w-4xl mx-auto">
-          <h3 className="text-sm font-bold text-center mb-2">Testimonials</h3>
-          <div className="grid md:grid-cols-2 gap-3">
-            <div className="flex items-start gap-2">
-              <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-sm">
-                👩
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-1 mb-1">
-                  {[1,2,3,4,5].map((i) => (
-                    <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-xs italic">"My serve improved 40% accuracy in just 4 weeks."</p>
-                <p className="text-xs text-gray-600 mt-1">- Maria Gonzalez</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-sm">
-                👨
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-1 mb-1">
-                  {[1,2,3,4,5].map((i) => (
-                    <Star key={i} className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-xs italic">"I improved my forehand with the recommended drills."</p>
-                <p className="text-xs text-gray-600 mt-1">- John Malone</p>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

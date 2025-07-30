@@ -89,3 +89,43 @@ export async function checkUserLimits(email: string): Promise<UserLimitCheck> {
 export function calculateProgressPercentage(totalAnalyses: number, maxFree: number = 100): number {
   return Math.min(100, Math.round((totalAnalyses / maxFree) * 100))
 }
+
+export async function getTotalAnalysesCount(): Promise<{ totalAnalyses: number, remainingFreeAnalyses: number }> {
+  try {
+    console.log('🔍 Getting total analyses count')
+    
+    // If Supabase is not configured, return default values
+    if (!supabase) {
+      console.warn('Supabase not configured - using default counts')
+      return {
+        totalAnalyses: 0,
+        remainingFreeAnalyses: 100
+      }
+    }
+    
+    // Count total completed analyses across all users
+    const { count: totalAnalyses, error: countError } = await supabase
+      .from('user_analysis_data')
+      .select('*', { count: 'exact', head: true })
+      .not('ai_analysis', 'is', null)
+
+    if (countError) {
+      console.error('Error counting total analyses:', countError)
+    }
+
+    const total = totalAnalyses || 0
+    const maxFreeAnalyses = 100
+    const remaining = Math.max(0, maxFreeAnalyses - total)
+
+    return {
+      totalAnalyses: total,
+      remainingFreeAnalyses: remaining
+    }
+  } catch (error) {
+    console.error('Failed to get total analyses:', error)
+    return {
+      totalAnalyses: 0,
+      remainingFreeAnalyses: 100
+    }
+  }
+}

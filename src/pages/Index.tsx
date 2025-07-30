@@ -80,13 +80,13 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-tennis-green/5">
+    <div className="min-h-screen bg-gray-50">
       {/* Header - More compact */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-2">
           <div className="flex items-center justify-center">
             <h1 className="text-xl font-bold text-gray-900">
-              <span className="text-tennis-green">Winner</span> Way
+              <span className="text-green-600">Winner</span> Way
             </h1>
           </div>
         </div>
@@ -109,16 +109,16 @@ const Index = () => {
                       <div
                         className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-200 ${
                           isActive
-                            ? 'bg-tennis-green text-white'
+                            ? 'bg-black text-green-500 border border-green-500/30'
                             : isPassed
-                            ? 'bg-green-500 text-white'
+                            ? 'bg-gray-800 text-white'
                             : 'bg-gray-200 text-gray-600'
                         }`}
                       >
                         {index + 1}
                       </div>
                       <span className={`ml-1 text-xs font-medium ${
-                        isActive ? 'text-tennis-green' : isPassed ? 'text-green-600' : 'text-gray-500'
+                        isActive ? 'text-green-600' : isPassed ? 'text-gray-600' : 'text-gray-500'
                       }`}>
                         {step}
                       </span>
@@ -149,7 +149,7 @@ const Index = () => {
                 <div className="text-center space-y-4">
                   <button
                     onClick={handleSkipGuide}
-                    className="bg-tennis-green hover:bg-tennis-green/90 text-white px-8 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
+                    className="bg-black hover:bg-gray-900 text-white px-8 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 border border-green-500/30 hover:border-green-500/50"
                   >
                     I'm Ready to Upload! 🎾
                   </button>
@@ -165,7 +165,7 @@ const Index = () => {
                 <div className="text-center">
                   <button
                     onClick={handleViewGuide}
-                    className="text-tennis-green hover:text-tennis-green/80 text-sm underline mb-4"
+                    className="text-green-600 hover:text-green-700 text-sm underline mb-4"
                   >
                     📹 Need help recording? View guide
                   </button>
@@ -178,7 +178,7 @@ const Index = () => {
               <div className="space-y-8">
                 {/* Banner de bienvenida de vuelta */}
                 {returnedFromSurvey && (
-                  <div className="bg-gradient-to-r from-green-500 to-tennis-green text-white p-4 rounded-lg shadow-lg animate-fade-in">
+                  <div className="bg-black text-white p-4 rounded-lg shadow-lg animate-fade-in border border-green-500/30">
                     <div className="flex items-center justify-center gap-2">
                       <span className="text-lg">🎾</span>
                       <p className="font-semibold">Thanks for your feedback! Here's your analysis to review whenever you want.</p>
@@ -197,7 +197,7 @@ const Index = () => {
                   />
                 ) : (
                   <div className="text-center py-8">
-                    <div className="animate-spin w-8 h-8 border-4 border-tennis-green border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <div className="animate-spin w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full mx-auto mb-4"></div>
                     <p className="text-gray-600">Processing analysis...</p>
                   </div>
                 )}
@@ -205,7 +205,7 @@ const Index = () => {
                   <div className="text-center space-y-4">
                     <button
                       onClick={handleViewSurvey}
-                      className="bg-tennis-green hover:bg-tennis-green/90 text-white px-8 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
+                      className="bg-black hover:bg-gray-900 text-white px-8 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 border border-green-500/30 hover:border-green-500/50"
                     >
                       Complete Feedback Survey 📝
                     </button>
@@ -225,7 +225,7 @@ const Index = () => {
       <footer className="bg-gray-900 text-white py-4 mt-8">
         <div className="container mx-auto px-4 text-center">
           <p className="text-gray-400 text-sm">
-            © 2024 Winner Way - Professional Tennis Analysis Platform
+            © 2025 Winner Way - Professional Tennis Analysis Platform
           </p>
         </div>
       </footer>
