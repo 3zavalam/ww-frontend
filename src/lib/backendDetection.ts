@@ -7,20 +7,39 @@ export interface BackendInfo {
   responseTime?: number;
 }
 
-const POSSIBLE_BACKENDS = [
-  // Environment variable (production/configured)
-  import.meta.env.VITE_BACKEND_URL,
+// Generate possible backend URLs based on current network  
+const generatePossibleBackends = () => {
+  const backends = [];
   
-  // Common local IPs for mobile hotspot/home networks
-  'http://192.168.1.100:5050',  // Common home router range
-  'http://192.168.0.100:5050',  // Alternative home range  
-  'http://192.168.43.1:5050',   // Android hotspot default
-  'http://172.20.10.1:5050',    // iPhone hotspot default
+  // Environment variable first (if set)
+  if (import.meta.env.VITE_BACKEND_URL) {
+    backends.push(import.meta.env.VITE_BACKEND_URL);
+  }
   
-  // Localhost (for development)
-  'http://localhost:5050',
-  'http://127.0.0.1:5050',
-].filter(Boolean); // Remove undefined values
+  // Try to get current domain IP and replace port
+  const currentHost = window.location.hostname;
+  if (currentHost && currentHost !== 'localhost') {
+    // If we're on a domain, try common local network ranges
+    backends.push(
+      'http://192.168.1.118:5050',  // Your Mac's current IP
+      'http://192.168.1.1:5050',    // Router IP
+      'http://192.168.0.1:5050',    // Alternative router
+      'http://10.0.0.1:5050',       // Another common range
+      'http://172.20.10.2:5050',    // iPhone hotspot client
+      'http://192.168.43.2:5050',   // Android hotspot client
+    );
+  }
+  
+  // Local development URLs
+  backends.push(
+    'http://localhost:5050',
+    'http://127.0.0.1:5050',
+  );
+  
+  return [...new Set(backends)]; // Remove duplicates
+};
+
+const POSSIBLE_BACKENDS = generatePossibleBackends();
 
 /**
  * Test if a backend URL is available
@@ -29,8 +48,9 @@ async function testBackend(url: string): Promise<BackendInfo> {
   const startTime = Date.now();
   
   try {
+    console.log(`🧪 Testing backend: ${url}`);
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
     
     const response = await fetch(`${url}/health`, {
       method: 'GET',
@@ -42,6 +62,7 @@ async function testBackend(url: string): Promise<BackendInfo> {
     
     if (response.ok) {
       const data = await response.json();
+      console.log(`✅ Backend available: ${url} (${Date.now() - startTime}ms)`);
       return {
         url,
         available: true,
@@ -49,9 +70,11 @@ async function testBackend(url: string): Promise<BackendInfo> {
       };
     }
     
+    console.log(`❌ Backend failed: ${url} (status: ${response.status})`);
     return { url, available: false };
     
   } catch (error) {
+    console.log(`❌ Backend error: ${url} (${error})`);
     return { url, available: false };
   }
 }
@@ -87,23 +110,27 @@ export async function detectBackend(): Promise<BackendInfo | null> {
  * Get backend URL with auto-detection fallback
  */
 export async function getBackendUrl(): Promise<string> {
-  // Try environment variable first
+  console.log('🔍 Starting backend URL detection...');
+  
+  // Auto-detect first (skip env variable for now as it may be wrong)
+  const detected = await detectBackend();
+  if (detected) {
+    console.log(`🎯 Using detected backend: ${detected.url}`);
+    return detected.url;
+  }
+  
+  // Try environment variable as fallback
   const envUrl = import.meta.env.VITE_BACKEND_URL;
   if (envUrl) {
+    console.log(`🔧 Trying environment backend: ${envUrl}`);
     const test = await testBackend(envUrl);
     if (test.available) {
       return envUrl;
     }
-    console.warn(`⚠️  Configured backend ${envUrl} not available, trying auto-detection...`);
+    console.warn(`⚠️  Configured backend ${envUrl} not available`);
   }
   
-  // Auto-detect if env variable doesn't work
-  const detected = await detectBackend();
-  if (detected) {
-    return detected.url;
-  }
-  
-  // Fallback to localhost
-  console.warn('🔧 Falling back to localhost');
+  // Final fallback to localhost
+  console.warn('🔧 Falling back to localhost (development mode)');
   return 'http://localhost:5050';
 }

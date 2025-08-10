@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Mail, Target, Clock, Users, CheckCircle, Star, ArrowRight } from 'lucide-react';
-// Skip Supabase functionality in local development
-const isLocalDev = import.meta.env.VITE_BACKEND_URL?.includes('localhost:5050') || import.meta.env.DEV;
+// Always use local mode (no Supabase) for now
+const isLocalDev = true;
 
 interface EmailCaptureProps {
   onEmailSubmit: (email: string, strokeType: string, handedness: string, experience: string) => void;

@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// Only create Supabase client if env vars are provided
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null
+// Disable Supabase completely for now - using local storage only
+const supabase = null
 
 export interface UserLimitCheck {
   canAnalyze: boolean
