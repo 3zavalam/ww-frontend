@@ -24,7 +24,7 @@ const generatePossibleBackends = () => {
     // Common tunnel services
     backends.push(
       // REPLACE WITH YOUR ngrok URL:
-      'https://0dcfdc2b60fa.ngrok-free.app',
+      'https://3e56680ca1f9.ngrok-free.app',
       
       // Common patterns  
       'https://winner-way.ngrok.io',
