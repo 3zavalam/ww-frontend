@@ -130,7 +130,7 @@ const VideoUpload = ({ onVideoUpload, userEmail, strokeType, handedness }: Video
       setCurrentStep('📝 Getting upload authorization...');
       setUploadProgress(5);
       
-      const uploadUrlResponse = await fetch(`${baseUrl}/upload-url`, {
+      const uploadUrlResponse = await fetch(`${baseUrl}/upload`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

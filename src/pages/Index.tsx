@@ -23,9 +23,8 @@ const Index = () => {
   const [sessionId] = useState(() => crypto.randomUUID());
   const [daysUntilNext, setDaysUntilNext] = useState(0);
   
-  // Use simple upload for localhost development, complex for production
-  const useSimpleUpload = import.meta.env.VITE_BACKEND_URL?.includes('localhost:5050') || 
-                         import.meta.env.DEV;
+  // Always use simple upload (no S3/Redis complexity)
+  const useSimpleUpload = true;
 
   const handleEmailSubmit = (email: string, stroke: string, hand: string, exp: string) => {
     setUserEmail(email);
