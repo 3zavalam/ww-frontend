@@ -10,16 +10,31 @@ export interface BackendInfo {
 // Generate possible backend URLs based on current network  
 const generatePossibleBackends = () => {
   const backends = [];
+  const isHTTPS = window.location.protocol === 'https:';
   
   // Environment variable first (if set)
   if (import.meta.env.VITE_BACKEND_URL) {
     backends.push(import.meta.env.VITE_BACKEND_URL);
   }
   
-  // Try to get current domain IP and replace port
-  const currentHost = window.location.hostname;
-  if (currentHost && currentHost !== 'localhost') {
-    // If we're on a domain, try common local network ranges
+  // If we're on HTTPS, only try HTTPS backends (tunnels)
+  if (isHTTPS) {
+    console.log('🔒 HTTPS site detected, only trying HTTPS backends (tunnels)');
+    
+    // Common tunnel services
+    backends.push(
+      // REPLACE WITH YOUR ngrok URL:
+      'https://d1e0ef6a9dee.ngrok-free.app',
+      
+      // Common patterns  
+      'https://winner-way.ngrok.io',
+      'https://tennis-demo.ngrok.io',
+      'https://mac-demo.tailscale-funnel.com',
+    );
+  } else {
+    // HTTP site - can try local IPs
+    console.log('🔓 HTTP site detected, trying local network IPs');
+    
     backends.push(
       'http://192.168.1.118:5050',  // Your Mac's current IP
       'http://192.168.1.1:5050',    // Router IP
@@ -27,14 +42,10 @@ const generatePossibleBackends = () => {
       'http://10.0.0.1:5050',       // Another common range
       'http://172.20.10.2:5050',    // iPhone hotspot client
       'http://192.168.43.2:5050',   // Android hotspot client
+      'http://localhost:5050',
+      'http://127.0.0.1:5050',
     );
   }
-  
-  // Local development URLs
-  backends.push(
-    'http://localhost:5050',
-    'http://127.0.0.1:5050',
-  );
   
   return [...new Set(backends)]; // Remove duplicates
 };
@@ -84,6 +95,7 @@ async function testBackend(url: string): Promise<BackendInfo> {
  */
 export async function detectBackend(): Promise<BackendInfo | null> {
   console.log('🔍 Detecting backend servers...');
+  const isHTTPS = window.location.protocol === 'https:';
   
   // Test all possible backends in parallel
   const tests = POSSIBLE_BACKENDS.map(url => testBackend(url));
@@ -93,7 +105,12 @@ export async function detectBackend(): Promise<BackendInfo | null> {
   const available = results.filter(result => result.available);
   
   if (available.length === 0) {
-    console.warn('❌ No backend servers found');
+    if (isHTTPS) {
+      console.warn('❌ No HTTPS backend servers found. You need ngrok or similar tunnel.');
+      console.warn('💡 Run: ngrok http 5050 and update VITE_BACKEND_URL');
+    } else {
+      console.warn('❌ No backend servers found');
+    }
     return null;
   }
   
