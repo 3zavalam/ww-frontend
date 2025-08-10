@@ -24,7 +24,7 @@ const generatePossibleBackends = () => {
     // Common tunnel services
     backends.push(
       // REPLACE WITH YOUR ngrok URL:
-      'https://d1e0ef6a9dee.ngrok-free.app',
+      'https://31d4e46b36aa.ngrok-free.app',
       
       // Common patterns  
       'https://winner-way.ngrok.io',
@@ -66,7 +66,10 @@ async function testBackend(url: string): Promise<BackendInfo> {
     const response = await fetch(`${url}/health`, {
       method: 'GET',
       signal: controller.signal,
-      mode: 'cors'
+      mode: 'cors',
+      headers: {
+        'ngrok-skip-browser-warning': 'true'  // Skip ngrok browser warning
+      }
     });
     
     clearTimeout(timeoutId);

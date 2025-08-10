@@ -105,6 +105,9 @@ const SimpleVideoUpload = ({ onVideoUpload, userEmail, strokeType, handedness, e
       const response = await fetch(`${baseUrl}/upload`, {
         method: 'POST',
         body: formData,
+        headers: {
+          'ngrok-skip-browser-warning': 'true'  // Skip ngrok browser warning
+        }
       });
 
       if (!response.ok) {
