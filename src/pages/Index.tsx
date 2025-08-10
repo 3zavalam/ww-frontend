@@ -1,7 +1,9 @@
 
 import React, { useState } from 'react';
 import EmailCapture from '@/components/EmailCapture';
+import SimpleEmailCapture from '@/components/SimpleEmailCapture';
 import VideoUpload from '@/components/VideoUpload';
+import SimpleVideoUpload from '@/components/SimpleVideoUpload';
 import VideoGuideSection from '@/components/VideoGuideSection';
 import AnalysisResults from '@/components/AnalysisResults';
 import TypeformSurvey from '@/components/TypeformSurvey';
@@ -14,16 +16,22 @@ const Index = () => {
   const [userEmail, setUserEmail] = useState('');
   const [strokeType, setStrokeType] = useState('');
   const [handedness, setHandedness] = useState('');
+  const [experience, setExperience] = useState('');
   const [uploadedVideo, setUploadedVideo] = useState<File | null>(null);
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [returnedFromSurvey, setReturnedFromSurvey] = useState(false);
   const [sessionId] = useState(() => crypto.randomUUID());
   const [daysUntilNext, setDaysUntilNext] = useState(0);
+  
+  // Use simple upload for localhost development, complex for production
+  const useSimpleUpload = import.meta.env.VITE_BACKEND_URL?.includes('localhost:5050') || 
+                         import.meta.env.DEV;
 
-  const handleEmailSubmit = (email: string, stroke: string, hand: string) => {
+  const handleEmailSubmit = (email: string, stroke: string, hand: string, exp: string) => {
     setUserEmail(email);
     setStrokeType(stroke);
     setHandedness(hand);
+    setExperience(exp);
     setCurrentStep('guide');
   };
 
@@ -170,7 +178,11 @@ const Index = () => {
                     📹 Need help recording? View guide
                   </button>
                 </div>
-                <VideoUpload onVideoUpload={handleVideoUpload} userEmail={userEmail} strokeType={strokeType} handedness={handedness} />
+                {useSimpleUpload ? (
+                  <SimpleVideoUpload onVideoUpload={handleVideoUpload} userEmail={userEmail} strokeType={strokeType} handedness={handedness} experience={experience} />
+                ) : (
+                  <VideoUpload onVideoUpload={handleVideoUpload} userEmail={userEmail} strokeType={strokeType} handedness={handedness} />
+                )}
               </div>
             )}
 
@@ -194,6 +206,7 @@ const Index = () => {
                     analysisData={analysisData}
                     sessionId={sessionId}
                     handedness={handedness}
+                    experience={experience}
                   />
                 ) : (
                   <div className="text-center py-8">

@@ -15,11 +15,9 @@ export interface UserLimitCheck {
 
 export async function checkUserLimits(email: string): Promise<UserLimitCheck> {
   try {
-    console.log('🔍 Checking limits for:', email)
     
     // If Supabase is not configured, return default values
     if (!supabase) {
-      console.warn('Supabase not configured - using default limits')
       return {
         canAnalyze: true,
         totalAnalyses: 0,
@@ -92,11 +90,9 @@ export function calculateProgressPercentage(totalAnalyses: number, maxFree: numb
 
 export async function getTotalAnalysesCount(): Promise<{ totalAnalyses: number, remainingFreeAnalyses: number }> {
   try {
-    console.log('🔍 Getting total analyses count')
     
     // If Supabase is not configured, return default values
     if (!supabase) {
-      console.warn('Supabase not configured - using default counts')
       return {
         totalAnalyses: 0,
         remainingFreeAnalyses: 100

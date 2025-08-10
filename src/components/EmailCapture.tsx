@@ -6,10 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Mail, Target, Clock, Users, CheckCircle, Star, ArrowRight } from 'lucide-react';
-import { checkUserLimits, calculateProgressPercentage, UserLimitCheck, getTotalAnalysesCount } from '@/lib/limits';
+// Skip Supabase functionality in local development
+const isLocalDev = import.meta.env.VITE_BACKEND_URL?.includes('localhost:5050') || import.meta.env.DEV;
 
 interface EmailCaptureProps {
-  onEmailSubmit: (email: string, strokeType: string, handedness: string) => void;
+  onEmailSubmit: (email: string, strokeType: string, handedness: string, experience: string) => void;
   onLimitReached: (daysUntilNext: number) => void;
   isLoading?: boolean;
 }
@@ -18,6 +19,7 @@ const EmailCapture = ({ onEmailSubmit, onLimitReached, isLoading = false }: Emai
   const [email, setEmail] = useState('');
   const [strokeType, setStrokeType] = useState('');
   const [handedness, setHandedness] = useState('');
+  const [experience, setExperience] = useState('');
   const [isEmailValid, setIsEmailValid] = useState(false);
   const [limitsData, setLimitsData] = useState<UserLimitCheck | null>(null);
   const [isCheckingLimits, setIsCheckingLimits] = useState(false);
@@ -36,8 +38,15 @@ const EmailCapture = ({ onEmailSubmit, onLimitReached, isLoading = false }: Emai
 
   // Get global counts on component mount
   useEffect(() => {
+    // Skip Supabase calls in local development
+    if (isLocalDev) {
+      setGlobalCounts({ totalAnalyses: 0, remainingFreeAnalyses: 100 });
+      return;
+    }
+    
     const getGlobalCounts = async () => {
       try {
+        const { getTotalAnalysesCount } = await import('@/lib/limits');
         const counts = await getTotalAnalysesCount();
         setGlobalCounts(counts);
       } catch (error) {
@@ -50,10 +59,17 @@ const EmailCapture = ({ onEmailSubmit, onLimitReached, isLoading = false }: Emai
 
   // Verificar límites cuando el email es válido
   useEffect(() => {
+    // Skip limits check for local development
+    if (isLocalDev) {
+      setLimitsData({ canAnalyze: true, totalAnalyses: 0, remainingFreeAnalyses: 100 });
+      return;
+    }
+    
     const checkLimits = async () => {
       if (isEmailValid && email) {
         setIsCheckingLimits(true);
         try {
+          const { checkUserLimits } = await import('@/lib/limits');
           const limits = await checkUserLimits(email);
           setLimitsData(limits);
         } catch (error) {
@@ -71,16 +87,23 @@ const EmailCapture = ({ onEmailSubmit, onLimitReached, isLoading = false }: Emai
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isEmailValid && strokeType && handedness && limitsData) {
-      if (!limitsData.canAnalyze && limitsData.daysUntilNext) {
-        onLimitReached(limitsData.daysUntilNext);
-      } else {
-        onEmailSubmit(email, strokeType, handedness);
+    // Skip limits check for local development
+    if (isLocalDev) {
+      if (isEmailValid && strokeType && handedness && experience) {
+        onEmailSubmit(email, strokeType, handedness, experience);
+      }
+    } else {
+      if (isEmailValid && strokeType && handedness && experience && limitsData) {
+        if (!limitsData.canAnalyze && limitsData.daysUntilNext) {
+          onLimitReached(limitsData.daysUntilNext);
+        } else {
+          onEmailSubmit(email, strokeType, handedness, experience);
+        }
       }
     }
   };
 
-  const isFormValid = isEmailValid && strokeType && handedness;
+  const isFormValid = isEmailValid && strokeType && handedness && experience;
 
   return (
     <div className="space-y-3">
@@ -91,7 +114,7 @@ const EmailCapture = ({ onEmailSubmit, onLimitReached, isLoading = false }: Emai
           <div 
             className="bg-green-500 h-1.5 rounded-full transition-all duration-300" 
             style={{ 
-              width: `${globalCounts ? calculateProgressPercentage(globalCounts.totalAnalyses) : 0}%` 
+              width: `${globalCounts ? Math.min((globalCounts.totalAnalyses / 1000) * 100, 100) : 0}%` 
             }}
           ></div>
         </div>
@@ -189,6 +212,34 @@ const EmailCapture = ({ onEmailSubmit, onLimitReached, isLoading = false }: Emai
                       <RadioGroupItem value="left" id="left" />
                       <Label htmlFor="left" className="cursor-pointer flex-1 text-sm">
                         Left-handed ✋
+                      </Label>
+                    </div>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <div>
+                <Label className="text-base font-semibold text-gray-700 mb-2 block">
+                  Experience playing tennis *
+                </Label>
+                <RadioGroup value={experience} onValueChange={setExperience}>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="flex items-center space-x-2 p-2 border rounded-lg hover:bg-gray-50 transition-colors">
+                      <RadioGroupItem value="beginner" id="beginner" />
+                      <Label htmlFor="beginner" className="cursor-pointer flex-1 text-sm">
+                        0-2 years
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-2 border rounded-lg hover:bg-gray-50 transition-colors">
+                      <RadioGroupItem value="intermediate" id="intermediate" />
+                      <Label htmlFor="intermediate" className="cursor-pointer flex-1 text-sm">
+                        2-5 years
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-2 border rounded-lg hover:bg-gray-50 transition-colors">
+                      <RadioGroupItem value="advanced" id="advanced" />
+                      <Label htmlFor="advanced" className="cursor-pointer flex-1 text-sm">
+                        5+ years
                       </Label>
                     </div>
                   </div>

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Target, TrendingUp, AlertCircle, CheckCircle, Award, Zap, Video, Play, ChevronDown } from 'lucide-react';
 import { saveAnalysisData } from '@/lib/analytics';
+import { getBackendUrl } from '@/lib/backendDetection';
 
 interface AnalysisResultsProps {
   videoFile: File;
@@ -11,11 +12,14 @@ interface AnalysisResultsProps {
   analysisData: any;
   sessionId?: string;
   handedness?: string;
+  experience?: string;
 }
 
-const AnalysisResults = ({ videoFile, userEmail, strokeType, analysisData, sessionId: propSessionId, handedness }: AnalysisResultsProps) => {
-  // Debug: ver qué datos llegan del backend
-  console.log('AnalysisResults - analysisData:', analysisData);
+const AnalysisResults = ({ videoFile, userEmail, strokeType, analysisData, sessionId: propSessionId, handedness, experience }: AnalysisResultsProps) => {
+  // Debug video URL only if missing
+  if (!analysisData?.video_url) {
+    console.log('⚠️ Missing video_url in analysisData');
+  }
   
   // Referencias para sincronizar videos
   const userVideoRef = useRef<HTMLVideoElement>(null);
@@ -42,6 +46,22 @@ const AnalysisResults = ({ videoFile, userEmail, strokeType, analysisData, sessi
       };
     }
 
+    // Get backend URL for completing relative URLs
+    const [backendUrl, setBackendUrl] = useState<string>('');
+    
+    // Initialize backend URL
+    useEffect(() => {
+      getBackendUrl().then(setBackendUrl);
+    }, []);
+
+    // Helper function to make URLs absolute if they're relative
+    const makeAbsoluteUrl = (url: string) => {
+      if (!url || !backendUrl) return '';
+      if (url.startsWith('http')) return url; // Already absolute
+      if (url.startsWith('/')) return `${backendUrl}${url}`; // Relative to backend
+      return url;
+    };
+
     // Asegurar que feedback sea siempre un array
     let feedback = analysisData.feedback || [];
     if (typeof feedback === 'string') {
@@ -57,16 +77,20 @@ const AnalysisResults = ({ videoFile, userEmail, strokeType, analysisData, sessi
       drills = [];
     }
 
-    console.log('Drills originales del backend:', analysisData.drills);
-    console.log('Drills procesados:', drills);
+    // Process keyframes to make URLs absolute
+    const keyframes: { [key: string]: string } = {};
+    const rawKeyframes = analysisData.keyframes || {};
+    for (const [phase, url] of Object.entries(rawKeyframes)) {
+      keyframes[phase] = makeAbsoluteUrl(url as string);
+    }
 
     return {
       overallScore: analysisData.swing_score || 0,
       feedback,
       drills,
-      keyframes: analysisData.keyframes || {},
-      video_url: analysisData.video_url || '',
-      reference_url: analysisData.reference_url || ''
+      keyframes,
+      video_url: makeAbsoluteUrl(analysisData.video_url || ''),
+      reference_url: makeAbsoluteUrl(analysisData.reference_url || '')
     };
   };
 
@@ -88,12 +112,7 @@ const AnalysisResults = ({ videoFile, userEmail, strokeType, analysisData, sessi
     return Math.round((score / 10) * 100);
   };
 
-  const getLevel = (score: number) => {
-    if (score >= 8) return 'Advanced';
-    if (score >= 6) return 'Intermediate-High';
-    if (score >= 4) return 'Intermediate';
-    return 'Beginner';
-  };
+  // Removed level classification - just showing percentage
 
   // Sincronizar reproducción de videos
   const syncVideoPlay = (sourceVideo: HTMLVideoElement, targetVideo: HTMLVideoElement | null) => {
@@ -127,6 +146,7 @@ const AnalysisResults = ({ videoFile, userEmail, strokeType, analysisData, sessi
           email: userEmail,
           stroke_type: strokeType,
           handedness: handedness,
+          experience: experience,
           ai_analysis: JSON.stringify(results.feedback),
           ai_drills: JSON.stringify(results.drills),
           swing_score: results.overallScore,
@@ -134,7 +154,6 @@ const AnalysisResults = ({ videoFile, userEmail, strokeType, analysisData, sessi
         };
 
         await saveAnalysisData(analysisToSave);
-        console.log('✅ Analysis data saved to database');
       } catch (error) {
         console.error('❌ Error saving analysis data:', error);
       }
@@ -182,7 +201,7 @@ const AnalysisResults = ({ videoFile, userEmail, strokeType, analysisData, sessi
           <p className="text-lg opacity-90">Overall Technical Score</p>
           <div className="flex items-center justify-center gap-2 mt-2">
             <Zap className="w-4 h-4" />
-            <span className="text-sm opacity-80">Level: {getLevel(results.overallScore)}</span>
+            <span className="text-sm opacity-80">Technique Match</span>
           </div>
         </CardContent>
       </Card>
@@ -316,7 +335,6 @@ const AnalysisResults = ({ videoFile, userEmail, strokeType, analysisData, sessi
           <CardContent>
             <div className="space-y-6">
               {results.drills.map((drill: any, index: number) => {
-                console.log('Drill individual:', drill); // Debug para ver estructura
                 
                 // Manejar diferentes formatos de drill (string u objeto)
                 let drillTitle = `Ejercicio ${index + 1}`;

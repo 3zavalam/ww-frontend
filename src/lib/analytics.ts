@@ -1,8 +1,15 @@
 import { createClient } from '@supabase/supabase-js'
+import * as localAnalytics from './localAnalytics'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-const supabase = createClient(supabaseUrl, supabaseKey)
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null
+
+// Determine whether to use local storage
+const useLocalStorage = () => {
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || ''
+  return backendUrl.includes('localhost') || import.meta.env.DEV || !supabase
+}
 
 export interface AnalysisData {
   email: string
@@ -21,11 +28,15 @@ export interface AnalysisData {
 
 export async function saveAnalysisData(data: AnalysisData) {
   try {
-    console.log('🔍 Attempting to save analysis data:', data)
+    // Use local storage if configured for local development or Supabase unavailable
+    if (useLocalStorage()) {
+      console.log('📱 Using local backend storage')
+      return await localAnalytics.saveAnalysisData(data)
+    }
     
     // Verificar si ya existe un registro con este session_id
     if (data.session_id) {
-      const { data: existing } = await supabase
+      const { data: existing } = await supabase!
         .from('user_analysis_data')
         .select('id')
         .eq('session_id', data.session_id)
@@ -33,12 +44,11 @@ export async function saveAnalysisData(data: AnalysisData) {
         .single()
 
       if (existing) {
-        console.log('⚠️ Record already exists for this session, skipping insert')
         return existing
       }
     }
     
-    const { data: result, error } = await supabase
+    const { data: result, error } = await supabase!
       .from('user_analysis_data')
       .insert({
         ...data,
@@ -51,7 +61,6 @@ export async function saveAnalysisData(data: AnalysisData) {
       throw error
     }
     
-    console.log('✅ Successfully saved to Supabase:', result)
     return result
   } catch (error) {
     console.error('❌ Failed to save analysis data:', error)
@@ -69,11 +78,15 @@ export async function saveFeedback(feedback: {
   session_id?: string
 }) {
   try {
-    console.log('🔍 Attempting to save feedback:', feedback)
+    // Use local storage if configured for local development or Supabase unavailable
+    if (useLocalStorage()) {
+      console.log('📱 Using local backend storage for feedback')
+      return await localAnalytics.saveFeedback(feedback)
+    }
     
     // Si tenemos session_id, intentar actualizar el registro existente
     if (feedback.session_id) {
-      const { data: updateResult, error: updateError } = await supabase
+      const { data: updateResult, error: updateError } = await supabase!
         .from('user_analysis_data')
         .update({
           feedback_rating: feedback.rating,
@@ -91,13 +104,12 @@ export async function saveFeedback(feedback: {
       }
 
       if (updateResult && updateResult.length > 0) {
-        console.log('✅ Successfully updated feedback in existing record:', updateResult)
         return updateResult
       }
     }
     
     // Si no se pudo actualizar, crear un nuevo registro
-    const { data: result, error } = await supabase
+    const { data: result, error } = await supabase!
       .from('user_analysis_data')
       .insert({
         email: feedback.email,
@@ -116,7 +128,6 @@ export async function saveFeedback(feedback: {
       throw error
     }
     
-    console.log('✅ Successfully saved feedback to Supabase:', result)
     return result
   } catch (error) {
     console.error('❌ Failed to save feedback:', error)

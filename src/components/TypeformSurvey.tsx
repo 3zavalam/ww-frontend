@@ -99,7 +99,6 @@ const TypeformSurvey = ({ userEmail, onBackToAnalysis, strokeType, sessionId }: 
   const handleNext = async () => {
     if (isLastQuestion) {
       // Submit survey
-      console.log('Survey submitted:', { email: userEmail, answers });
       
       try {
         // Guardar respuestas en Supabase
@@ -113,7 +112,6 @@ const TypeformSurvey = ({ userEmail, onBackToAnalysis, strokeType, sessionId }: 
           session_id: sessionId
         });
         
-        console.log('✅ Survey responses saved to database');
       } catch (error) {
         console.error('❌ Error saving survey responses:', error);
       }
