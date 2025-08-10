@@ -3,12 +3,12 @@ import * as localAnalytics from './localAnalytics'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null
+// Disable Supabase completely - using local storage only
+const supabase = null
 
-// Determine whether to use local storage
+// Always use local storage
 const useLocalStorage = () => {
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || ''
-  return backendUrl.includes('localhost') || import.meta.env.DEV || !supabase
+  return true  // Force local storage always
 }
 
 export interface AnalysisData {

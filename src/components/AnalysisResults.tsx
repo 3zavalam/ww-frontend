@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Target, TrendingUp, AlertCircle, CheckCircle, Award, Zap, Video, Play, ChevronDown } from 'lucide-react';
@@ -33,8 +33,24 @@ const AnalysisResults = ({ videoFile, userEmail, strokeType, analysisData, sessi
     volley: 'Volley'
   };
 
-  // Procesar datos del backend
-  const processAnalysisData = () => {
+  // Get backend URL for completing relative URLs
+  const [backendUrl, setBackendUrl] = useState<string>('');
+  
+  // Initialize backend URL
+  useEffect(() => {
+    getBackendUrl().then(setBackendUrl);
+  }, []);
+
+  // Helper function to make URLs absolute if they're relative
+  const makeAbsoluteUrl = (url: string) => {
+    if (!url || !backendUrl) return '';
+    if (url.startsWith('http')) return url; // Already absolute
+    if (url.startsWith('/')) return `${backendUrl}${url}`; // Relative to backend
+    return url;
+  };
+
+  // Procesar datos del backend - recalcular cuando backendUrl cambie
+  const results = useMemo(() => {
     if (!analysisData) {
       return {
         overallScore: 0,
@@ -45,22 +61,6 @@ const AnalysisResults = ({ videoFile, userEmail, strokeType, analysisData, sessi
         reference_url: ''
       };
     }
-
-    // Get backend URL for completing relative URLs
-    const [backendUrl, setBackendUrl] = useState<string>('');
-    
-    // Initialize backend URL
-    useEffect(() => {
-      getBackendUrl().then(setBackendUrl);
-    }, []);
-
-    // Helper function to make URLs absolute if they're relative
-    const makeAbsoluteUrl = (url: string) => {
-      if (!url || !backendUrl) return '';
-      if (url.startsWith('http')) return url; // Already absolute
-      if (url.startsWith('/')) return `${backendUrl}${url}`; // Relative to backend
-      return url;
-    };
 
     // Asegurar que feedback sea siempre un array
     let feedback = analysisData.feedback || [];
@@ -84,7 +84,7 @@ const AnalysisResults = ({ videoFile, userEmail, strokeType, analysisData, sessi
       keyframes[phase] = makeAbsoluteUrl(url as string);
     }
 
-    return {
+    const result = {
       overallScore: analysisData.swing_score || 0,
       feedback,
       drills,
@@ -92,9 +92,18 @@ const AnalysisResults = ({ videoFile, userEmail, strokeType, analysisData, sessi
       video_url: makeAbsoluteUrl(analysisData.video_url || ''),
       reference_url: makeAbsoluteUrl(analysisData.reference_url || '')
     };
-  };
 
-  const results = processAnalysisData();
+    // Debug logging
+    console.log('🎬 Video URLs processed:', {
+      backend: backendUrl,
+      raw_video_url: analysisData.video_url,
+      final_video_url: result.video_url,
+      raw_reference_url: analysisData.reference_url,
+      final_reference_url: result.reference_url
+    });
+
+    return result;
+  }, [analysisData, backendUrl]);
 
   const getScoreColor = (score: number) => {
     if (score >= 8) return "text-green-600 bg-green-50";
